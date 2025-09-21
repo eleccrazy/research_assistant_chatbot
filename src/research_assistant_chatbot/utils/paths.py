@@ -13,10 +13,12 @@ ROOT_DIR = os.path.dirname(
     )
 )
 
+SRC_DIR = os.path.join(ROOT_DIR, "src")
+APP_CONFIG_FPATH = os.path.join(SRC_DIR, "config", "config.yaml")
+PROMPT_CONFIG_FPATH = os.path.join(SRC_DIR, "config", "prompt_config.yaml")
+
 ENV_FPATH = os.path.join(ROOT_DIR, ".env")
 
 
 DATA_DIR = os.path.join(ROOT_DIR, "data")
 PUBLICATION_FPATH = os.path.join(DATA_DIR, "project_1_publications.json")
-
-print(ROOT_DIR)

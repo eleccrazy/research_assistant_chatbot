@@ -7,3 +7,8 @@ chatbot_env/
 outputs/
 
 *.log
+
+# PyCharm files
+.idea/
+*.iml
+*.iws
