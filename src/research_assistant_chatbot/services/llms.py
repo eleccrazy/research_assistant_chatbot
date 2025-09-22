@@ -11,6 +11,8 @@ from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_groq import ChatGroq
 from utils.helpers import load_env
 
+from typing import Union
+
 
 available_models = [
     "gemini-1.5-flash",
@@ -19,8 +21,25 @@ available_models = [
 ]
 
 
-def get_llm(model: str):
+def get_llm(model: str) -> Union["ChatGoogleGenerativeAI", "ChatGroq"]:
+    """
+        Returns an instance of a chat language model based on the specified model name.
 
+        This function loads environment variables and validates the requested model
+        against the available models. Depending on the model, it initializes and
+        returns the appropriate LLM client with the corresponding API key and settings.
+
+        Parameters:
+            model (str): The name of the language model to initialize. Must be one of
+                         the keys in `available_models`.
+
+        Returns:
+            Union[ChatGoogleGenerativeAI, ChatGroq]: An instance of the requested chat model
+                                                     client, ready to use.
+
+        Raises:
+            ValueError: If the provided model name is not in `available_models`.
+        """
     load_env()
 
     if model not in available_models:
