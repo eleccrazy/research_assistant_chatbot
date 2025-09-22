@@ -16,8 +16,8 @@ from pathlib import Path
 from typing import Union
 
 import yaml
-from python_dotenv import load_dotenv
-from paths import ENV_FPATH, PUBLICATION_FPATH
+from dotenv import load_dotenv
+from utils.paths import ENV_FPATH, PUBLICATION_FPATH
 
 
 def load_publications() -> None:
