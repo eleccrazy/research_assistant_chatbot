@@ -14,6 +14,7 @@ Date: 22/09/2025
 import os
 from pathlib import Path
 from typing import Union
+import json
 
 import yaml
 from dotenv import load_dotenv
@@ -39,7 +40,7 @@ def load_publications() -> None:
     # Read and return the file content
     try:
         with open(file_path, "r", encoding="utf-8") as file:
-            return file.read()
+            return json.load(file)
     except IOError as e:
         raise IOError(f"Error reading publication file: {e}") from e
 
