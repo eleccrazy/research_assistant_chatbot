@@ -2,18 +2,30 @@
 File: chatbot.py
 Description: This module defines the Chatbot class that orchestrates the RAG-based conversational workflow between the user, LLM, memory, and retrieval components.
 Author: Gizachew Kassa
-Date Created: 17/10/2025
+Date Created: 19/10/2025
 """
 from core.prompt_builder import build_system_prompt_from_config
 from core.rag_pipeline import RAGPipeline
-from typing import Dict, Any
+from services.llms import get_llm
+from typing import Dict, Any, Union
+from langchain_google_genai import ChatGoogleGenerativeAI
+from langchain_groq import ChatGroq
+from datetime import datetime
+
 
 class Chatbot:
     """
     """
-    def __init__(self, rag_pipeline: RAGPipeline, system_prompt_config: Dict[str, Any]) -> None:
+    def __init__(
+            self,
+            rag_pipeline: RAGPipeline,
+            system_prompt_config: Dict[str, Any],
+            llm_client: Union[ChatGoogleGenerativeAI, ChatGroq]
+            ) -> None:
+
         self.rag = rag_pipeline
         self.system_prompt = build_system_prompt_from_config(system_prompt_config)
+        self.llm = llm_client
 
     def _build_user_message(self, retrieved_chunks: list, user_query: str) -> str:
         """
@@ -40,7 +52,7 @@ class Chatbot:
 
         return user_message
 
-    def ask(self, user_query: str, user_id=None) -> str:
+    def ask(self, user_query: str, user_id=None) -> Dict[str,Any]:
         """
         """
         # Retrieve relevant chunks
@@ -48,3 +60,22 @@ class Chatbot:
 
         # Build user message
         user_message = self._build_user_message(chunks, user_query)
+
+        # Call LLM
+        response = self.llm.invoke(
+            [
+                {"role": "system", "content": self.system_prompt},
+                {"role": "user", "content": user_message}
+            ]
+        )
+
+        # Return structured result
+        return {
+            "query": user_query,
+            "context": chunks,
+            "response": response.content,
+            "metadata": {
+                "timestamp": datetime.now().isoformat(),
+                "num_chunks_used": len(chunks)
+            }
+        }
