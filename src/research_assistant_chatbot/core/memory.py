@@ -7,13 +7,24 @@ Date Created: 19/10/2025
 from collections import deque
 from typing import List, Dict, Any
 
+from src.research_assistant_chatbot.utils.text_helpers import messages_to_string, count_tokens
+
+
 class MemoryManager:
     """
     Manages short-term chat history and long-term summarized memory for context retention.
     """
-    def __init__(self, window_size: int = 4):
+    def __init__(self, window_size: int = 4, token_limit: int = 2500):
+        """
+        Initializes the memory manager.
+
+        Args:
+            window_size (int): Number of recent message pairs to retain.
+            token_limit (int): Max tokens to include in summarization input.
+        """
         self.history = deque(maxlen=window_size * 2)  # store user+assistant turns
         self.summary = ""  # rolling summary for older messages
+        self.token_limit = token_limit
 
     def add_turn(self, user_message: str, assistant_response: str):
         """Add one interaction (user + assistant) to memory."""
@@ -25,26 +36,55 @@ class MemoryManager:
         return list(self.history)
 
     def get_combined_context(self) -> str:
-        """Combine summary and recent exchanges into a text context."""
-        formatted_history = "\n".join(
-            f"{m['role'].capitalize()}: {m['content']}" for m in self.history
+        """
+        Combines long-term summary and recent chat history into a readable text block.
+        """
+        formatted_history = messages_to_string(list(self.history))
+        return (
+            f"Conversation Summary:\n{self.summary or 'No summary yet.'}\n\n"
+            f"Recent Conversation:\n{formatted_history}"
         )
-        return f"Summary:\n{self.summary or 'None'}\n\nRecent exchanges:\n{formatted_history}"
 
     def update_summary(self, llm, summarization_prompt: str):
-        """Summarize old messages using the LLM and store as long-term memory."""
-        if len(self.history) < self.history.maxlen:
-            return  # not enough history yet to summarize
+        """
+        Summarizes the current history using an LLM, keeping total tokens within limit.
 
-        # Combine old messages
-        text_to_summarize = "\n".join(
-            f"{m['role']}: {m['content']}" for m in self.history
-        )
+        Args:
+            llm: LLM client instance.
+            summarization_prompt (str): Template for summarization prompt.
+                                         Must include `{chat}` placeholder.
 
-        summary = llm.invoke([
+        Returns:
+            str | None: Generated summary text if performed, otherwise None.
+        """
+        # Combine messages into text
+        text_to_summarize = messages_to_string(list(self.history))
+        token_count = count_tokens(text_to_summarize, getattr(llm, "model", "gemini-1.5-flash"))
+
+        if token_count > self.token_limit:
+            # Trim oldest messages to fit within limit
+            while token_count > self.token_limit and len(self.history) > 2:
+                self.history.popleft()
+                text_to_summarize = messages_to_string(list(self.history))
+                token_count = count_tokens(text_to_summarize, getattr(llm, "model", "gemini-1.5-flash"))
+
+        # If no history left, skip summarization
+        if not self.history:
+            return None
+
+        # Request summary from LLM
+        summary_response = llm.invoke([
             {"role": "system", "content": "You are a summarization assistant."},
-            {"role": "user", "content": summarization_prompt.format(chat=text_to_summarize)},
+            {"role": "user", "content": f"""Provide a concise summary of this conversation history: 
+                {summarization_prompt.format(chat=text_to_summarize)}
+
+            Focus on main topics and key information. Keep under 200 words."""
+             }
         ])
 
-        self.summary += f"\n{summary.content}"
+        # Update long-term summary
+        new_summary = summary_response.content.strip()
+        self.summary += f"\n{new_summary}\n"
         self.history.clear()
+
+        return new_summary
