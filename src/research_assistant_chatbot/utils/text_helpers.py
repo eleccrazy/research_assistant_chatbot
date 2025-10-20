@@ -7,7 +7,6 @@ Date Created: 20/10/2025
 
 import tiktoken
 from typing import List, Dict, Union
-from langchain_core.messages import SystemMessage, HumanMessage, AIMessage
 
 
 def count_tokens(text: str, model: str = "gemini-1.5-flash") -> int:
@@ -32,16 +31,15 @@ def count_tokens(text: str, model: str = "gemini-1.5-flash") -> int:
         return int(len(text.split()) * 1.3)
 
 
-def messages_to_string(
-    messages: List[Union[SystemMessage, HumanMessage, AIMessage]],
-) -> str:
+def messages_to_string(messages: List[Dict[str, str]]) -> str:
     """
-    Converts a list of LangChain message objects into a readable plain-text conversation string.
+    Converts a list of role-based message dictionaries into a readable text transcript.
 
-    Designed for RAG-based assistants that work on document chunks rather than full publication texts.
+    Designed for RAG-based assistants that store chat messages as simple dictionaries
+    with 'role' and 'content' keys.
 
     Args:
-        messages (list): List of LangChain message objects (SystemMessage, HumanMessage, AIMessage).
+        messages (list[dict]): List of message dictionaries (e.g., {"role": "user", "content": "..."}).
 
     Returns:
         str: Readable text representation of the conversation history.
@@ -50,23 +48,19 @@ def messages_to_string(
     user_question_count = 0
 
     for i, msg in enumerate(messages):
-        # System message
-        if isinstance(msg, SystemMessage):
-            content.append(f"SYSTEM: {msg.content}")
+        role = msg.get("role", "").lower()
+        text = msg.get("content", "")
 
-        # User message
-        elif isinstance(msg, HumanMessage):
+        if role == "system":
+            content.append(f"SYSTEM: {text}")
+        elif role == "user":
             user_question_count += 1
             if i > 0:
                 content.append("=" * 80)
-            content.append(f"USER Q{user_question_count}: {msg.content}")
-
-        # Assistant message
-        elif isinstance(msg, AIMessage):
-            content.append(f"ASSISTANT: {msg.content}")
-
+            content.append(f"USER Q{user_question_count}: {text}")
+        elif role == "assistant":
+            content.append(f"ASSISTANT: {text}")
         else:
-            # Fallback for unknown types
-            content.append(f"UNKNOWN ({type(msg).__name__}): {getattr(msg, 'content', str(msg))}")
+            content.append(f"UNKNOWN ({role}): {text}")
 
     return "\n\n".join(content)
