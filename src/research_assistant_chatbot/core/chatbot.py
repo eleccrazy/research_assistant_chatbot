@@ -12,6 +12,8 @@ from langchain_core.prompts import ChatPromptTemplate
 from typing import Dict, Any
 from langchain_core.language_models import BaseChatModel
 
+from core.memory import MemoryManager
+
 
 class Chatbot:
     """
@@ -28,7 +30,8 @@ class Chatbot:
             self,
             rag_pipeline: RAGPipeline,
             system_prompt_config: str,
-            llm_client: BaseChatModel
+            llm_client: BaseChatModel,
+            memory_manager: MemoryManager
             ) -> None:
         """
                 Initializes the Chatbot with RAG components, system prompt, and an LLM client.
@@ -37,11 +40,13 @@ class Chatbot:
                     rag_pipeline (RAGPipeline): The RAG pipeline instance for document retrieval.
                     system_prompt (str): The system-level instruction prompt.
                     llm_client (BaseChatModel): The chat language model client instance.
+                    memory_manager (MemoryManager): The memory manager instance.
         """
         self.rag = rag_pipeline
         self.system_prompt = build_system_prompt_from_config(system_prompt_config)
         self.llm = llm_client
         self.chain = self._build_runnable_chain()
+        self.memory = memory_manager
 
     def _build_runnable_chain(self) -> RunnableSequence:
         """
@@ -93,23 +98,33 @@ class Chatbot:
 
     def ask(self, user_query: str, user_id=None) -> Dict[str,Any]:
         """
-             Handles a single user query using the RAG chain.
+         Handles a single user query using the RAG chain.
 
-             Executes the multi-step RAG process: retrieves context, formats it,
-             builds the full LLM prompt, and generates a response through the
-             configured language model.
+         Executes the multi-step RAG process: retrieves context, formats it,
+         builds the full LLM prompt, and generates a response through the
+         configured language model.
 
-             Args:
-                 user_query (str): The user's input question or request.
+         Args:
+             user_query (str): The user's input question or request.
 
-             Returns:
-                 dict: A structured response containing the query, model output,
-                       timestamp, and additional metadata.
-             """
+         Returns:
+             dict: A structured response containing the query, model output,
+                   timestamp, and additional metadata.
+        """
+        # Retrieve memory context
+        memory_context = self.memory.get_combined_context()
+
+        # Build system prompt with memory
+        system_prompt = f"{self.system_prompt}\n\nPrevious Context:\n{memory_context}"
+
+        # Run the RAG chain
         result = self.chain.invoke({
             "query": user_query,
-            "system_prompt": self.system_prompt
+            "system_prompt": system_prompt
         })
+
+        # Update memory
+        self.memory.add_turn(user_query, result.content)
 
         return {
             "query": user_query,
