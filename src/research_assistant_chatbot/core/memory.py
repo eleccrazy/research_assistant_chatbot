@@ -7,7 +7,7 @@ Date Created: 19/10/2025
 from collections import deque
 from typing import List, Dict, Any
 
-from src.research_assistant_chatbot.utils.text_helpers import messages_to_string, count_tokens
+from utils.text_helpers import messages_to_string, count_tokens
 
 
 class MemoryManager:
