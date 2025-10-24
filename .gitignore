@@ -5,6 +5,7 @@
 chatbot_env/
 
 outputs/
+research_db/
 
 *.log
 
