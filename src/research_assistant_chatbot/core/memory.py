@@ -88,3 +88,20 @@ class MemoryManager:
         self.history.clear()
 
         return new_summary
+
+    def to_dict(self) -> Dict[str, Any]:
+        """
+        Returns the full memory state as a dictionary for debugging or persistence.
+        Useful for logging intermediate states during conversation.
+
+        Returns:
+            dict: Current summary, chat history, and timestamp.
+        """
+        from datetime import datetime
+
+        return {
+            "summary": self.summary,
+            "history": list(self.history),
+            "timestamp": datetime.now().isoformat(),
+        }
+
